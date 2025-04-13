@@ -63,7 +63,9 @@ export default function index() {
     },
   ];
 
-  const [todos, setTodos] = useState<todoType[]>(todoData);
+const [allTodos, setAllTodos] = useState<todoType[]>(todoData); // original
+const [todos, setTodos] = useState<todoType[]>(todoData);       // filtered
+
   const [todosText, setTodosText] = useState<string>();
   const [searchQuary, setSearchQuary] = useState<string>("");
 
@@ -73,44 +75,61 @@ export default function index() {
       try {
         const todos = await AsyncStorage.getItem("my-key");
         if (todos !== null) {
-          setTodos(JSON.parse(todos));
+          const parsedTodos = JSON.parse(todos);
+          setAllTodos(parsedTodos);
+          setTodos(parsedTodos);
         }
       } catch (e) {
-        // error reading value
+        console.log(e);
       }
     };
     getData();
   }, []);
+  
+    //  search functionlity
+    const onSearch = (query: string) => {
+      const filtered = allTodos.filter((item) =>
+        item.title?.toLowerCase().includes(query.toLowerCase())
+      );
+      setTodos(filtered);
+    };
+    
+    useEffect(() => {
+      onSearch(searchQuary)
+    }, [searchQuary])
 
   // set async store update data
   const addTodo = async () => {
     try {
       const newTodo = {
         id: Math.random(),
-        title: todosText,
+        title: todosText || '',
         isDone: false,
       };
-      const updatedTodos = [...todos, newTodo];
+      const updatedTodos = [...allTodos, newTodo];
+      setAllTodos(updatedTodos);
       setTodos(updatedTodos);
       setTodosText("");
       Keyboard.dismiss();
       await AsyncStorage.setItem("my-key", JSON.stringify(updatedTodos));
     } catch (e) {
-      console.log("====================================");
       console.log(e);
-      console.log("====================================");
     }
   };
+  
 
   // delete func
-
-  const deleteFun = async (id: any) => {
+  const deleteFun = async (id: number) => {
     try {
-      const updatedData = todos.filter((item) => item.id !== id);
+      const updatedData = allTodos.filter((item) => item.id !== id);
+      setAllTodos(updatedData);
       setTodos(updatedData);
       await AsyncStorage.setItem("my-key", JSON.stringify(updatedData));
-    } catch {}
+    } catch (e) {
+      console.log(e);
+    }
   };
+  
 
   return (
     <SafeAreaView style={styles.container}>
@@ -136,7 +155,11 @@ export default function index() {
 
       <View style={styles.searchBar}>
         <Feather name="search" size={24} color="black" />
-        <TextInput placeholder="search..." onChange={(text)=> setSearchQuary(text)} clearButtonMode="always" />
+        <TextInput
+          placeholder="search..."
+          onChangeText={(text) => setSearchQuary(text)}
+          clearButtonMode="always"
+        />
       </View>
 
       <FlatList
